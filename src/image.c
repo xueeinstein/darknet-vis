@@ -249,6 +249,40 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
     }
 }
 
+void draw_cells(image im, int wc, int hc)
+{
+    int r = 1, g = 0, b = 0;
+    int cell_w = im.w / wc, cell_h = im.h / hc;
+    int i, j, k, offset;
+    int w = im.h * .006;
+
+    if(w == 0) w = 1;
+
+    // draw horizontal lines
+    for(i = 0; i < hc - 1; ++i){
+        for(j = 0; j < im.w; ++j){
+            for(k = 0; k < w; ++k){
+              offset = ((i + 1) * cell_h + k) * im.w;
+                im.data[offset + j + 0*im.w*im.h] = r;
+                im.data[offset + j + 1*im.w*im.h] = g;
+                im.data[offset + j + 2*im.w*im.h] = b;
+            }
+        }
+    }
+
+    // draw vertical lines
+    for(i = 0; i < wc - 1; ++i){
+        for(j = 0; j < im.h; ++j){
+            for(k = 0; k < w; ++k){
+                offset = (i + 1) * cell_w + k;
+                im.data[offset + j*im.w + 0*im.w*im.h] = r;
+                im.data[offset + j*im.w + 1*im.w*im.h] = g;
+                im.data[offset + j*im.w + 2*im.w*im.h] = b;
+            }
+        }
+    }
+}
+
 void transpose_image(image im)
 {
     assert(im.w == im.h);

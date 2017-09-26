@@ -623,6 +623,12 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         network_predict(net, X);
         printf("%s: Predicted in %f seconds.\n", input, what_time_is_it_now()-time);
         get_region_boxes(l, im.w, im.h, net.w, net.h, thresh, probs, boxes, masks, 0, 0, hier_thresh, 1);
+        if(net.visualization){
+            image im_visual = load_image_color(input,0,0);
+            // draw cells
+            draw_cells(im_visual, l.w, l.h);
+            save_image(im_visual, "vis");
+        }
         if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
         //else if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
         draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes);
