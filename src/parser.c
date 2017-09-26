@@ -619,6 +619,9 @@ void parse_net_options(list *options, network *net)
     } else if (net->policy == POLY || net->policy == RANDOM){
     }
     net->max_batches = option_find_int(options, "max_batches", 0);
+
+    // detection process visualization
+    net->visualization = option_find_int(options, "visualization", 0);
 }
 
 int is_network(section *s)

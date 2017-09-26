@@ -464,6 +464,8 @@ typedef struct network{
     int index;
     float *cost;
 
+    int visualization;
+
 #ifdef GPU
     float *input_gpu;
     float *truth_gpu;

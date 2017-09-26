@@ -616,6 +616,8 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             for(j = 0; j < l.w*l.h*l.n; ++j) masks[j] = calloc(l.coords-4, sizeof(float *));
         }
 
+        if(net.visualization) printf("Processing with detection visualization\n");
+
         float *X = sized.data;
         time=what_time_is_it_now();
         network_predict(net, X);
