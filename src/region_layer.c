@@ -9,6 +9,78 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
+
+// HSV colormap with 20 colors
+// get from Matlab with command: hsv(20)
+float hsv_colormap[20][3] = {
+    {1.0, 0.0, 0.0},
+    {1.0, 0.3, 0.0},
+    {1.0, 0.6, 0.0},
+    {1.0, 0.9, 0.0},
+    {0.8, 1.0, 0.0},
+    {0.5, 1.0, 0.0},
+    {0.2, 1.0, 0.0},
+    {0.0, 1.0, 0.1},
+    {0.0, 1.0, 0.4},
+    {0.0, 1.0, 0.7},
+    {0.0, 1.0, 1.0},
+    {0.0, 0.7, 1.0},
+    {0.0, 0.4, 1.0},
+    {0.0, 0.1, 1.0},
+    {0.2, 0.0, 1.0},
+    {0.5, 0.0, 1.0},
+    {0.8, 0.0, 1.0},
+    {1.0, 0.0, 0.9},
+    {1.0, 0.0, 0.6},
+    {1.0, 0.0, 0.3}
+};
+
+void convert_hsv2rgb(float h, float s, float v, float *pr, float *pg, float *pb)
+{
+    // ref: https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSV
+
+    h = h * 360; // convert h from 0-1 to 0-360
+    float c = v * s; // chroma
+    float h_prime = fmod(h / 60.0, 6); // get in int
+    float x = c * (1 - fabs(fmod(h_prime, 2) - 1));
+    float m = v - c;
+    float r, g, b;
+
+    if(0 <= h_prime && h_prime < 1){
+        r = c;
+        g = x;
+        b = 0;
+    } else if(1 <= h_prime && h_prime < 2){
+        r = x;
+        g = c;
+        b = 0;
+    } else if(2 <= h_prime && h_prime < 3){
+        r = 0;
+        g = c;
+        b = x;
+    } else if(3 <= h_prime && h_prime < 4){
+        r = 0;
+        g = x;
+        b = c;
+    } else if(4 <= h_prime && h_prime < 5){
+        r = x;
+        g = 0;
+        b = c;
+    } else if(5 <= h_prime && h_prime < 6){
+        r = c;
+        g = 0;
+        b = x;
+    } else {
+        r = 0;
+        g = 0;
+        b = 0;
+    }
+
+    *pr = r + m;
+    *pg = g + m;
+    *pb = b + m;
+}
 
 layer make_region_layer(int batch, int w, int h, int n, int classes, int coords)
 {
@@ -448,6 +520,29 @@ void get_region_boxes(layer l, int w, int h, int netw, int neth, float thresh, f
         }
     }
     correct_region_boxes(boxes, l.w*l.h*l.n, w, h, netw, neth, relative);
+}
+
+void get_obj_map(float **probs, float **obj_map, int map_size, int n, int classes)
+{
+    // @n: the number of region proposal per cell
+    // @classes: the number of classes, it marks the position of obj prob
+    int i, j;
+    for(i = 0; i < map_size; ++i){
+        // here, we select the max obj probability among n region proposals
+        float max_prob = 0.0;
+        for(j = 0; j < n; ++j){
+            int index = i * n + j;
+            if(probs[index][classes] > max_prob) max_prob = probs[index][classes];
+        }
+
+        // convert prob to color
+        int color_id = (int)floor(20 * max_prob);
+        float r, g, b;
+        convert_hsv2rgb(hsv_colormap[color_id][0], hsv_colormap[color_id][1], hsv_colormap[color_id][2], &r, &g, &b);
+        obj_map[i][0] = r;
+        obj_map[i][1] = g;
+        obj_map[i][2] = b;
+    }
 }
 
 #ifdef GPU
