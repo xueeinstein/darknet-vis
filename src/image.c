@@ -262,7 +262,7 @@ void draw_cells(image im, int wc, int hc)
     for(i = 0; i < hc - 1; ++i){
         for(j = 0; j < im.w; ++j){
             for(k = 0; k < w; ++k){
-              offset = ((i + 1) * cell_h + k) * im.w;
+                offset = ((i + 1) * cell_h + k) * im.w;
                 im.data[offset + j + 0*im.w*im.h] = r;
                 im.data[offset + j + 1*im.w*im.h] = g;
                 im.data[offset + j + 2*im.w*im.h] = b;
@@ -279,6 +279,33 @@ void draw_cells(image im, int wc, int hc)
                 im.data[offset + j*im.w + 1*im.w*im.h] = g;
                 im.data[offset + j*im.w + 2*im.w*im.h] = b;
             }
+        }
+    }
+}
+
+void draw_obj_map(image im, float **obj_map, int wc, int hc)
+{
+    assert(im.c == 4); // only support rgba image
+    float alpha = 0.6;
+    int cell_w = im.w / wc, cell_h = im.h / wc;
+    int i, j, x, y, offset, index;
+
+    // alpha blending: Ires = alpha x Ifg + (1 - alpha) x Ibg
+    for(j = 0; j < im.h; ++j) {
+        for(i = 0; i < im.w; ++i) {
+            x = i / cell_w;
+            y = j / cell_h;
+            if(x == wc) x = wc - 1;
+            if(y == hc) y = hc - 1;
+            index = y * wc + x;
+            offset = j * im.w + i;
+            im.data[offset + 0*im.w*im.h] *= 1 - alpha;
+            im.data[offset + 0*im.w*im.h] += alpha * obj_map[index][0];
+            im.data[offset + 1*im.w*im.h] *= 1 - alpha;
+            im.data[offset + 1*im.w*im.h] += alpha * obj_map[index][1];
+            im.data[offset + 2*im.w*im.h] *= 1 - alpha;
+            im.data[offset + 2*im.w*im.h] += alpha * obj_map[index][2];
+            im.data[offset + 3*im.w*im.h] = 1;
         }
     }
 }
@@ -617,7 +644,7 @@ int fill_image_from_stream(CvCapture *cap, image im)
 void save_image_jpg(image p, const char *name)
 {
     image copy = copy_image(p);
-    if(p.c == 3) rgbgr_image(copy);
+    if(p.c == 3 || p.c == 4) rgbgr_image(copy);
     int x,y,k;
 
     char buff[256];
@@ -1442,6 +1469,51 @@ image load_image(char *filename, int w, int h, int c)
 image load_image_color(char *filename, int w, int h)
 {
     return load_image(filename, w, h, 3);
+}
+
+image load_image_rgba(char *filename, int w, int h)
+{
+#ifdef OPENCV
+    IplImage *src = 0;
+    if( (src = cvLoadImage(filename, -1)) == 0 )
+    {
+        fprintf(stderr, "Cannot load image \"%s\"\n", filename);
+        char buff[256];
+        sprintf(buff, "echo %s >> bad.list", filename);
+        system(buff);
+        return make_image(10,10,3);
+        //exit(0);
+    }
+
+    IplImage *src_rgba = 0;
+    if(src->nChannels == 3){
+        // add alpha channel
+        IplImage *src_b = cvCreateImage(cvGetSize(src), 8, 1);
+        IplImage *src_g = cvCreateImage(cvGetSize(src), 8, 1);
+        IplImage *src_r = cvCreateImage(cvGetSize(src), 8, 1);
+        IplImage *src_a = cvCreateImage(cvGetSize(src), 8, 1);
+        cvSplit(src, src_b, src_g, src_r, NULL);
+        cvSet(src_a, cvScalarAll(255), NULL);
+        src_rgba = cvCreateImage(cvGetSize(src), 8, 4);
+        cvMerge(src_r, src_g, src_b, src_a, src_rgba);
+        cvReleaseImage(&src);
+    } else if(src->nChannels == 4){
+        src_rgba = src;
+    } else {
+        fprintf(stderr, "Visualization should be a RGBA image.\n");
+    }
+    image out = ipl_to_image(src_rgba);
+    cvReleaseImage(&src_rgba);
+#else
+    image out = load_image_stb(filename, 4);
+#endif
+
+    if((h && w) && (h != out.h || w != out.w)){
+        image resized = resize_image(out, w, h);
+        free_image(out);
+        out = resized;
+    }
+    return out;
 }
 
 image get_image_layer(image m, int l)

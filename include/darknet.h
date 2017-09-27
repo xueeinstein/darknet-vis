@@ -653,6 +653,7 @@ void set_batch_network(network *net, int b);
 void set_temp_network(network net, float t);
 image load_image(char *filename, int w, int h, int c);
 image load_image_color(char *filename, int w, int h);
+image load_image_rgba(char *filename, int w, int h);
 image make_image(int w, int h, int c);
 image resize_image(image im, int w, int h);
 image letterbox_image(image im, int w, int h);
