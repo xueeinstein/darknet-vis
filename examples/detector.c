@@ -623,24 +623,39 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         network_predict(net, X);
         printf("%s: Predicted in %f seconds.\n", input, what_time_is_it_now()-time);
         get_region_boxes(l, im.w, im.h, net.w, net.h, thresh, probs, boxes, masks, 0, 0, hier_thresh, 1);
-        if(net.visualization){
-            image im_visual = load_image_rgba(input,0,0);
-            // draw cells
-            draw_cells(im_visual, l.w, l.h);
+        if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+        //else if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
 
-            // generate prob maps
+        if(net.visualization){
+            image im_visual_1 = load_image_rgba(input,0,0);
+            image im_visual_2 = load_image_rgba(input,0,0);
+            // draw cells
+            draw_cells(im_visual_1, l.w, l.h);
+            draw_cells(im_visual_2, l.w, l.h);
+
+            // generate obj prob maps
             float **obj_map = calloc(l.w*l.h, sizeof(float *));
             for(j = 0; j < l.w*l.h; ++j) obj_map[j] = calloc(3, sizeof(float *));
             get_obj_map(probs, obj_map, l.w*l.h, l.n, l.classes);
-            draw_obj_map(im_visual, obj_map, l.w, l.h);
+            draw_obj_map(im_visual_1, obj_map, l.w, l.h);
+            draw_detections(im_visual_1, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes);
 
-            save_image(im_visual, "vis");
+            // generate class maps, i.e. show the class with max prob on each cell
+            float **cls_map = calloc(l.w*l.h, sizeof(float *));
+            for(j = 0; j < l.w*l.h; ++j) cls_map[j] = calloc(3, sizeof(float *));
+            get_class_map(probs, cls_map, l.w*l.h, l.n, l.classes);
+            draw_obj_map(im_visual_2, cls_map, l.w, l.h);
+            draw_detections(im_visual_2, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes);
 
-            free_image(im_visual);
+            save_image(im_visual_1, "vis_obj");
+            save_image(im_visual_2, "vis_class");
+
+            free_image(im_visual_1);
+            free_image(im_visual_2);
             free_ptrs((void **)obj_map, l.w*l.h);
+            free_ptrs((void **)cls_map, l.w*l.h);
         }
-        if (nms) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
-        //else if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+
         draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes);
         if(outfile){
             save_image(im, outfile);

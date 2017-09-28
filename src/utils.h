@@ -43,6 +43,7 @@ float dist_array(float *a, float *b, int n, int sub);
 float **one_hot_encode(float *a, int n, int k);
 float sec(clock_t clocks);
 void print_statistics(float *a, int n);
+float get_color(int c, int x, int max);
 
 #endif
 

@@ -12,19 +12,6 @@
 
 int windows = 0;
 
-float colors[6][3] = { {1,0,1}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{1,0,0} };
-
-float get_color(int c, int x, int max)
-{
-    float ratio = ((float)x/max)*5;
-    int i = floor(ratio);
-    int j = ceil(ratio);
-    ratio -= i;
-    float r = (1-ratio) * colors[i][c] + ratio*colors[j][c];
-    //printf("%f\n", r);
-    return r;
-}
-
 image mask_to_rgb(image mask)
 {
     int n = mask.c;
@@ -291,6 +278,7 @@ void draw_obj_map(image im, float **obj_map, int wc, int hc)
     int i, j, x, y, offset, index;
 
     // alpha blending: Ires = alpha x Ifg + (1 - alpha) x Ibg
+    // TODO: add cells cache to decrease computation
     for(j = 0; j < im.h; ++j) {
         for(i = 0; i < im.w; ++i) {
             x = i / cell_w;
@@ -306,8 +294,15 @@ void draw_obj_map(image im, float **obj_map, int wc, int hc)
             im.data[offset + 2*im.w*im.h] *= 1 - alpha;
             im.data[offset + 2*im.w*im.h] += alpha * obj_map[index][2];
             im.data[offset + 3*im.w*im.h] = 1;
+            /* printf("pos: [%d %d], r: %f, g: %f, b: %f\n", x, y, im.data[]) */
         }
     }
+}
+
+void draw_class_map(image im, float **cls_map, int wc, int hc)
+{
+    // share the same procedure with `draw_obj_map`
+    draw_obj_map(im, cls_map, wc, hc);
 }
 
 void transpose_image(image im)

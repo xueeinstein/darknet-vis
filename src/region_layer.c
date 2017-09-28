@@ -466,6 +466,7 @@ void get_region_boxes(layer l, int w, int h, int netw, int neth, float thresh, f
                      */
                 }
                 probs[index][l.classes] = max;
+                /* printf("probs[%d][%d]: %f\n", index, l.classes, probs[index][l.classes]); */
             }
             if(only_objectness){
                 probs[index][0] = scale;
@@ -484,7 +485,7 @@ void get_obj_map(float **probs, float **obj_map, int map_size, int n, int classe
         // here, we select the max obj probability among n region proposals
         float max_prob = 0.0;
         for(j = 0; j < n; ++j){
-            int index = i * n + j;
+            int index = j * map_size + i;
             if(probs[index][classes] > max_prob) max_prob = probs[index][classes];
         }
 
@@ -493,6 +494,39 @@ void get_obj_map(float **probs, float **obj_map, int map_size, int n, int classe
         obj_map[i][0] = rgb_colormap[color_id][0];
         obj_map[i][1] = rgb_colormap[color_id][1];
         obj_map[i][2] = rgb_colormap[color_id][2];
+    }
+}
+
+void get_class_map(float **probs, float **cls_map, int map_size, int n, int classes)
+{
+    int i, j, k;
+    for(i = 0; i < map_size; ++i){
+        // here, we select the class with max probability among (n x classes) region-class prob pairs
+        float max_prob = 0.0;
+        int max_class = -1;
+        for(j = 0; j < n; ++j){
+            int index = j * map_size + i;
+            for(k = 0; k < classes; ++k){
+                if(probs[index][k] > max_prob){
+                    max_prob = probs[index][k];
+                    max_class = k;
+                }
+            }
+        }
+
+        // convert class to color
+        // use the same alogrithm as `draw_detections` to select class color
+        float r = 0, g = 0, b = 0;
+        if(max_class > 0) {
+            int offset = max_class*123457 % classes;
+            r = get_color(2,offset,classes);
+            g = get_color(1,offset,classes);
+            b = get_color(0,offset,classes);
+        }
+
+        cls_map[i][0] = r;
+        cls_map[i][1] = g;
+        cls_map[i][2] = b;
     }
 }
 
