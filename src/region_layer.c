@@ -11,76 +11,29 @@
 #include <stdlib.h>
 #include <math.h>
 
-// HSV colormap with 20 colors
-// get from Matlab with command: hsv(20)
-float hsv_colormap[20][3] = {
-    {1.0, 0.0, 0.0},
-    {1.0, 0.3, 0.0},
-    {1.0, 0.6, 0.0},
-    {1.0, 0.9, 0.0},
-    {0.8, 1.0, 0.0},
-    {0.5, 1.0, 0.0},
-    {0.2, 1.0, 0.0},
-    {0.0, 1.0, 0.1},
-    {0.0, 1.0, 0.4},
-    {0.0, 1.0, 0.7},
-    {0.0, 1.0, 1.0},
-    {0.0, 0.7, 1.0},
-    {0.0, 0.4, 1.0},
-    {0.0, 0.1, 1.0},
-    {0.2, 0.0, 1.0},
-    {0.5, 0.0, 1.0},
-    {0.8, 0.0, 1.0},
-    {1.0, 0.0, 0.9},
-    {1.0, 0.0, 0.6},
-    {1.0, 0.0, 0.3}
+// RGB colormap with 18 colors
+// get from http://colrd.com/palette/22198/?download=css
+float rgb_colormap[19][3] = {
+  {0.078431, 0.078431, 0.078431},
+  {0.266667, 0.133333, 0.600000},
+  {0.231373, 0.047059, 0.741176},
+  {0.200000, 0.066667, 0.733333},
+  {0.266667, 0.266667, 0.866667},
+  {0.066667, 0.666667, 0.733333},
+  {0.070588, 0.741176, 0.725490},
+  {0.133333, 0.800000, 0.666667},
+  {0.411765, 0.815686, 0.145098},
+  {0.666667, 0.800000, 0.133333},
+  {0.815686, 0.764706, 0.062745},
+  {0.800000, 0.733333, 0.200000},
+  {0.996078, 0.682353, 0.176471},
+  {1.000000, 0.600000, 0.200000},
+  {1.000000, 0.400000, 0.266667},
+  {1.000000, 0.266667, 0.133333},
+  {1.000000, 0.200000, 0.066667},
+  {0.933333, 0.066667, 0.000000},
+  {0.972549, 0.047059, 0.070588}
 };
-
-void convert_hsv2rgb(float h, float s, float v, float *pr, float *pg, float *pb)
-{
-    // ref: https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSV
-
-    h = h * 360; // convert h from 0-1 to 0-360
-    float c = v * s; // chroma
-    float h_prime = fmod(h / 60.0, 6); // get in int
-    float x = c * (1 - fabs(fmod(h_prime, 2) - 1));
-    float m = v - c;
-    float r, g, b;
-
-    if(0 <= h_prime && h_prime < 1){
-        r = c;
-        g = x;
-        b = 0;
-    } else if(1 <= h_prime && h_prime < 2){
-        r = x;
-        g = c;
-        b = 0;
-    } else if(2 <= h_prime && h_prime < 3){
-        r = 0;
-        g = c;
-        b = x;
-    } else if(3 <= h_prime && h_prime < 4){
-        r = 0;
-        g = x;
-        b = c;
-    } else if(4 <= h_prime && h_prime < 5){
-        r = x;
-        g = 0;
-        b = c;
-    } else if(5 <= h_prime && h_prime < 6){
-        r = c;
-        g = 0;
-        b = x;
-    } else {
-        r = 0;
-        g = 0;
-        b = 0;
-    }
-
-    *pr = r + m;
-    *pg = g + m;
-    *pb = b + m;
-}
 
 layer make_region_layer(int batch, int w, int h, int n, int classes, int coords)
 {
@@ -536,12 +489,10 @@ void get_obj_map(float **probs, float **obj_map, int map_size, int n, int classe
         }
 
         // convert prob to color
-        int color_id = (int)floor(20 * max_prob);
-        float r, g, b;
-        convert_hsv2rgb(hsv_colormap[color_id][0], hsv_colormap[color_id][1], hsv_colormap[color_id][2], &r, &g, &b);
-        obj_map[i][0] = r;
-        obj_map[i][1] = g;
-        obj_map[i][2] = b;
+        int color_id = (int)floor(19 * max_prob);
+        obj_map[i][0] = rgb_colormap[color_id][0];
+        obj_map[i][1] = rgb_colormap[color_id][1];
+        obj_map[i][2] = rgb_colormap[color_id][2];
     }
 }
 
