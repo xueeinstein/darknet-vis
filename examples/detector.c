@@ -638,14 +638,14 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             for(j = 0; j < l.w*l.h; ++j) obj_map[j] = calloc(3, sizeof(float *));
             get_obj_map(probs, obj_map, l.w*l.h, l.n, l.classes);
             draw_obj_map(im_visual_1, obj_map, l.w, l.h);
-            draw_detections(im_visual_1, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes);
+            draw_detections(im_visual_1, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes, 1);
 
             // generate class maps, i.e. show the class with max prob on each cell
             float **cls_map = calloc(l.w*l.h, sizeof(float *));
             for(j = 0; j < l.w*l.h; ++j) cls_map[j] = calloc(3, sizeof(float *));
             get_class_map(probs, cls_map, l.w*l.h, l.n, l.classes);
             draw_obj_map(im_visual_2, cls_map, l.w, l.h);
-            draw_detections(im_visual_2, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes);
+            draw_detections(im_visual_2, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes, 1);
 
             save_image(im_visual_1, "vis_obj");
             save_image(im_visual_2, "vis_class");
@@ -656,7 +656,7 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             free_ptrs((void **)cls_map, l.w*l.h);
         }
 
-        draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes);
+        draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes, 0);
         if(outfile){
             save_image(im, outfile);
         }
