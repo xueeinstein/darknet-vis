@@ -239,7 +239,7 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
 void draw_cells(image im, int wc, int hc)
 {
     int r = 1, g = 0, b = 0;
-    int cell_w = im.w / wc, cell_h = im.h / hc;
+    float cell_w = im.w / (wc + 0.0), cell_h = im.h / (hc + 0.0);
     int i, j, k, offset;
     int w = im.h * .006;
 
@@ -249,7 +249,7 @@ void draw_cells(image im, int wc, int hc)
     for(i = 0; i < hc - 1; ++i){
         for(j = 0; j < im.w; ++j){
             for(k = 0; k < w; ++k){
-                offset = ((i + 1) * cell_h + k) * im.w;
+                offset = ((int)floor((i + 1) * cell_h) + k) * im.w;
                 im.data[offset + j + 0*im.w*im.h] = r;
                 im.data[offset + j + 1*im.w*im.h] = g;
                 im.data[offset + j + 2*im.w*im.h] = b;
@@ -261,7 +261,7 @@ void draw_cells(image im, int wc, int hc)
     for(i = 0; i < wc - 1; ++i){
         for(j = 0; j < im.h; ++j){
             for(k = 0; k < w; ++k){
-                offset = (i + 1) * cell_w + k;
+                offset = (int)floor((i + 1) * cell_w) + k;
                 im.data[offset + j*im.w + 0*im.w*im.h] = r;
                 im.data[offset + j*im.w + 1*im.w*im.h] = g;
                 im.data[offset + j*im.w + 2*im.w*im.h] = b;
@@ -274,15 +274,15 @@ void draw_obj_map(image im, float **obj_map, int wc, int hc)
 {
     assert(im.c == 4); // only support rgba image
     float alpha = 0.6;
-    int cell_w = im.w / wc, cell_h = im.h / wc;
+    float cell_w = im.w / (wc + 0.0), cell_h = im.h / (hc + 0.0);
     int i, j, x, y, offset, index;
 
     // alpha blending: Ires = alpha x Ifg + (1 - alpha) x Ibg
     // TODO: add cells cache to decrease computation
     for(j = 0; j < im.h; ++j) {
         for(i = 0; i < im.w; ++i) {
-            x = i / cell_w;
-            y = j / cell_h;
+            x = (int)floor(i / cell_w);
+            y = (int)floor(j / cell_h);
             if(x == wc) x = wc - 1;
             if(y == hc) y = hc - 1;
             index = y * wc + x;
