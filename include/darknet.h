@@ -704,6 +704,7 @@ int network_width(network *net);
 int network_height(network *net);
 float *network_predict_image(network *net, image im);
 void network_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs);
+void network_visual_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs, char **names, image **alphabet, char *outfile);
 int num_boxes(network *net);
 box *make_boxes(network *net);
 

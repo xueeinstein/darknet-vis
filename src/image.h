@@ -59,6 +59,7 @@ void print_image(image m);
 
 image make_empty_image(int w, int h, int c);
 void copy_image_into(image src, image dest);
+image rgb2rgba_image(image im);
 
 float get_pixel(image m, int x, int y, int c);
 float get_pixel_extend(image m, int x, int y, int c);

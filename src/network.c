@@ -526,6 +526,66 @@ void network_detect(network *net, image im, float thresh, float hier_thresh, flo
     }
 }
 
+void network_visual_detect(network *net, image im, float thresh, float hier_thresh, float nms, box *boxes, float **probs, char **names, image **alphabet, char *outfile)
+{
+    network_predict_image(net, im);
+    layer l = net->layers[net->n-1];
+    if(l.type == REGION){
+        float **masks = 0;
+        int j;
+        if (l.coords > 4){
+            masks = calloc(l.w*l.h*l.n, sizeof(float*));
+            for(j = 0; j < l.w*l.h*l.n; ++j) masks[j] = calloc(l.coords-4, sizeof(float *));
+        }
+
+        get_region_boxes(l, im.w, im.h, net->w, net->h, thresh, probs, boxes, masks, 0, 0, hier_thresh, 1);
+        if(net->visualization){
+            assert(im.c == 3);
+
+            image im_visual_1 = rgb2rgba_image(im);
+            image im_visual_2 = rgb2rgba_image(im);
+            // draw cells
+            draw_cells(im_visual_1, l.w, l.h);
+            draw_cells(im_visual_2, l.w, l.h);
+
+            // generate obj prob maps
+            float **obj_map = calloc(l.w*l.h, sizeof(float *));
+            for(j = 0; j < l.w*l.h; ++j) obj_map[j] = calloc(3, sizeof(float *));
+            get_obj_map(probs, obj_map, l.w*l.h, l.n, l.classes);
+            draw_obj_map(im_visual_1, obj_map, l.w, l.h);
+            draw_detections(im_visual_1, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes, 1);
+
+            // generate class maps, i.e. show the class with max prob on each cell
+            float **cls_map = calloc(l.w*l.h, sizeof(float *));
+            for(j = 0; j < l.w*l.h; ++j) cls_map[j] = calloc(3, sizeof(float *));
+            get_class_map(probs, cls_map, l.w*l.h, l.n, l.classes);
+            draw_obj_map(im_visual_2, cls_map, l.w, l.h);
+            draw_detections(im_visual_2, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes, 1);
+
+            if(outfile){
+                char buff[256];
+                sprintf(buff, "%s_obj", outfile);
+                save_image(im_visual_1, buff);
+                sprintf(buff, "%s_class", outfile);
+                save_image(im_visual_2, buff);
+            } else {
+                save_image(im_visual_1, "vis_obj");
+                save_image(im_visual_2, "vis_class");
+            }
+
+            free_image(im_visual_1);
+            free_image(im_visual_2);
+            free_ptrs((void **)obj_map, l.w*l.h);
+            free_ptrs((void **)cls_map, l.w*l.h);
+        }
+        if (nms) do_nms_sort(boxes, probs, l.w*l.h*l.n, l.classes, nms);
+        draw_detections(im, l.w*l.h*l.n, thresh, boxes, probs, masks, names, alphabet, l.classes, 1);
+        if(outfile){
+            save_image(im, outfile);
+        }
+    }
+}
+
 float *network_predict_p(network *net, float *input)
 {
     return network_predict(*net, input);

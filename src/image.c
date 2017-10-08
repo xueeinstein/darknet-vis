@@ -491,6 +491,19 @@ image copy_image(image p)
     return copy;
 }
 
+image rgb2rgba_image(image im)
+{
+    int i;
+    image rgba = make_image(im.w, im.h, 4);
+    for(i = 0; i < im.w*im.h; ++i){
+        rgba.data[i] = im.data[i];
+        rgba.data[i+im.w*im.h*1] = im.data[i+im.w*im.h*1];
+        rgba.data[i+im.w*im.h*2] = im.data[i+im.w*im.h*2];
+        rgba.data[i+im.w*im.h*3] = 1.0;
+    }
+    return rgba;
+}
+
 void rgbgr_image(image im)
 {
     int i;
