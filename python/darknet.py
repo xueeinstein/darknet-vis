@@ -1,127 +1,202 @@
 from ctypes import *
-import math
-import random
+import os
 
-def sample(probs):
-    s = sum(probs)
-    probs = [a/s for a in probs]
-    r = random.uniform(0, 1)
-    for i in range(len(probs)):
-        r = r - probs[i]
-        if r <= 0:
-            return i
-    return len(probs)-1
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
-def c_array(ctype, values):
-    return (ctype * len(values))(*values)
 
 class BOX(Structure):
-    _fields_ = [("x", c_float),
-                ("y", c_float),
-                ("w", c_float),
-                ("h", c_float)]
+    _fields_ = [("x", c_float), ("y", c_float), ("w", c_float), ("h", c_float)]
+
 
 class IMAGE(Structure):
-    _fields_ = [("w", c_int),
-                ("h", c_int),
-                ("c", c_int),
-                ("data", POINTER(c_float))]
+    _fields_ = [("w", c_int), ("h", c_int), ("c", c_int), ("data",
+                                                           POINTER(c_float))]
+
 
 class METADATA(Structure):
-    _fields_ = [("classes", c_int),
-                ("names", POINTER(c_char_p))]
+    _fields_ = [("classes", c_int), ("names", POINTER(c_char_p))]
 
-#lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
-lib = CDLL("libdarknet.so", RTLD_GLOBAL)
-lib.network_width.argtypes = [c_void_p]
-lib.network_width.restype = c_int
-lib.network_height.argtypes = [c_void_p]
-lib.network_height.restype = c_int
 
-predict = lib.network_predict_p
-predict.argtypes = [c_void_p, POINTER(c_float)]
-predict.restype = POINTER(c_float)
+class Darknet(object):
+    """Wrapper for darknet APIs from dynamic lib"""
 
-make_boxes = lib.make_boxes
-make_boxes.argtypes = [c_void_p]
-make_boxes.restype = POINTER(BOX)
+    def __init__(self, cfg, meta, weights):
+        libdarknet_path = os.path.join(THIS_DIR, "..", "libdarknet.so")
+        lib = CDLL(libdarknet_path, RTLD_GLOBAL)
+        lib.network_width.argtypes = [c_void_p]
+        lib.network_width.restype = c_int
+        lib.network_height.argtypes = [c_void_p]
+        lib.network_height.restype = c_int
 
-free_ptrs = lib.free_ptrs
-free_ptrs.argtypes = [POINTER(c_void_p), c_int]
+        self.predict = lib.network_predict_p
+        self.predict.argtypes = [c_void_p, POINTER(c_float)]
+        self.predict.restype = POINTER(c_float)
 
-num_boxes = lib.num_boxes
-num_boxes.argtypes = [c_void_p]
-num_boxes.restype = c_int
+        self.make_boxes = lib.make_boxes
+        self.make_boxes.argtypes = [c_void_p]
+        self.make_boxes.restype = POINTER(BOX)
 
-make_probs = lib.make_probs
-make_probs.argtypes = [c_void_p]
-make_probs.restype = POINTER(POINTER(c_float))
+        self.free_ptrs = lib.free_ptrs
+        self.free_ptrs.argtypes = [POINTER(c_void_p), c_int]
 
-detect = lib.network_predict_p
-detect.argtypes = [c_void_p, IMAGE, c_float, c_float, c_float, POINTER(BOX), POINTER(POINTER(c_float))]
+        self.num_boxes = lib.num_boxes
+        self.num_boxes.argtypes = [c_void_p]
+        self.num_boxes.restype = c_int
 
-reset_rnn = lib.reset_rnn
-reset_rnn.argtypes = [c_void_p]
+        self.make_probs = lib.make_probs
+        self.make_probs.argtypes = [c_void_p]
+        self.make_probs.restype = POINTER(POINTER(c_float))
 
-load_net = lib.load_network_p
-load_net.argtypes = [c_char_p, c_char_p, c_int]
-load_net.restype = c_void_p
+        self.reset_rnn = lib.reset_rnn
+        self.reset_rnn.argtypes = [c_void_p]
 
-free_image = lib.free_image
-free_image.argtypes = [IMAGE]
+        self.load_net = lib.load_network_p
+        self.load_net.argtypes = [c_char_p, c_char_p, c_int]
+        self.load_net.restype = c_void_p
 
-letterbox_image = lib.letterbox_image
-letterbox_image.argtypes = [IMAGE, c_int, c_int]
-letterbox_image.restype = IMAGE
+        self.free_image = lib.free_image
+        self.free_image.argtypes = [IMAGE]
 
-load_meta = lib.get_metadata
-lib.get_metadata.argtypes = [c_char_p]
-lib.get_metadata.restype = METADATA
+        self.letterbox_image = lib.letterbox_image
+        self.letterbox_image.argtypes = [IMAGE, c_int, c_int]
+        self.letterbox_image.restype = IMAGE
 
-load_image = lib.load_image_color
-load_image.argtypes = [c_char_p, c_int, c_int]
-load_image.restype = IMAGE
+        self.load_meta = lib.get_metadata
+        lib.get_metadata.argtypes = [c_char_p]
+        lib.get_metadata.restype = METADATA
 
-predict_image = lib.network_predict_image
-predict_image.argtypes = [c_void_p, IMAGE]
-predict_image.restype = POINTER(c_float)
+        self.load_image = lib.load_image_color
+        self.load_image.argtypes = [c_char_p, c_int, c_int]
+        self.load_image.restype = IMAGE
 
-network_detect = lib.network_detect
-network_detect.argtypes = [c_void_p, IMAGE, c_float, c_float, c_float, POINTER(BOX), POINTER(POINTER(c_float))]
+        self.predict_image = lib.network_predict_image
+        self.predict_image.argtypes = [c_void_p, IMAGE]
+        self.predict_image.restype = POINTER(c_float)
 
-def classify(net, meta, im):
-    out = predict_image(net, im)
-    res = []
-    for i in range(meta.classes):
-        res.append((meta.names[i], out[i]))
-    res = sorted(res, key=lambda x: -x[1])
-    return res
+        self.network_detect = lib.network_detect
+        self.network_detect.argtypes = [
+            c_void_p, IMAGE, c_float, c_float, c_float,
+            POINTER(BOX),
+            POINTER(POINTER(c_float))
+        ]
 
-def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
-    im = load_image(image, 0, 0)
-    boxes = make_boxes(net)
-    probs = make_probs(net)
-    num =   num_boxes(net)
-    network_detect(net, im, thresh, hier_thresh, nms, boxes, probs)
-    res = []
-    for j in range(num):
-        for i in range(meta.classes):
-            if probs[j][i] > 0:
-                res.append((meta.names[i], probs[j][i], (boxes[j].x, boxes[j].y, boxes[j].w, boxes[j].h)))
-    res = sorted(res, key=lambda x: -x[1])
-    free_image(im)
-    free_ptrs(cast(probs, POINTER(c_void_p)), num)
-    return res
-    
+        self.network_visual_detect = lib.network_visual_detect
+        self.network_visual_detect.argtypes = [
+            c_void_p, IMAGE, c_float, c_float, c_float,
+            POINTER(BOX),
+            POINTER(POINTER(c_float)),
+            POINTER(c_char_p),
+            POINTER(POINTER(IMAGE)), c_char_p
+        ]
+
+        self.draw_detections = lib.draw_detections
+        self.draw_detections.argtypes = [
+            IMAGE, c_int, c_float,
+            POINTER(BOX),
+            POINTER(POINTER(c_float)),
+            POINTER(POINTER(c_float)),
+            POINTER(c_char_p),
+            POINTER(POINTER(IMAGE)), c_int, c_int
+        ]
+
+        self.load_alphabet = lib.load_alphabet
+        self.load_alphabet.argtypes = []
+        self.load_alphabet.restype = POINTER(POINTER(IMAGE))
+
+        self.save_image = lib.save_image
+        self.save_image.argtypes = [IMAGE, c_char_p]
+
+        self._init_network(cfg, meta, weights)
+
+    def _init_network(self, cfg, meta, weights):
+        self.net = self.load_net(cfg, weights, 0)
+        self.meta_f = meta
+        self.meta = self.load_meta(meta)
+
+    def _get_names(self, meta):
+        names_file = None
+        with open(meta, 'w') as f:
+            for l in f.readlines():
+                if l.startswith("names"):
+                    names_file = l.split('=')[1].strip()
+                    break
+
+        if names_file is None:
+            raise Exception("Cannot find 'names' entry in {}".format(meta))
+
+        with open(names_file) as fn:
+            names = [i.strip() for i in fn.readlines()]
+            return names
+
+    def classify(self, im):
+        out = self.predict_image(self.net, im)
+        res = []
+        for i in range(self.meta.classes):
+            res.append((self.meta.names[i], out[i]))
+        res = sorted(res, key=lambda x: -x[1])
+        return res
+
+    def detect(self, image, thresh=.5, hier_thresh=.5, nms=.45, outfile=None):
+        im = self.load_image(image, 0, 0)
+        boxes = self.make_boxes(self.net)
+        probs = self.make_probs(self.net)
+        num = self.num_boxes(self.net)
+        self.network_detect(self.net, im, thresh, hier_thresh, nms, boxes,
+                            probs)
+
+        # draw bounding boxes
+        if outfile is not None:
+            masks = POINTER(POINTER(c_float))()
+            alphabet = self.load_alphabet()
+            names = self.meta.names
+            classes = self.meta.classes
+            self.draw_detections(im, num, thresh, boxes, probs, masks, names,
+                                 alphabet, classes, 1)
+            self.save_image(im, outfile)
+
+        res = []
+        for j in range(num):
+            for i in range(self.meta.classes):
+                if probs[j][i] > 0:
+                    res.append((self.meta.names[i], probs[j][i],
+                                (boxes[j].x, boxes[j].y, boxes[j].w,
+                                 boxes[j].h)))
+        res = sorted(res, key=lambda x: -x[1])
+        self.free_image(im)
+        self.free_ptrs(cast(probs, POINTER(c_void_p)), num)
+        return res
+
+    def detect_v(self, image, outfile, thresh=.5, hier_thresh=.5, nms=.45):
+        im = self.load_image(image, 0, 0)
+        boxes = self.make_boxes(self.net)
+        probs = self.make_probs(self.net)
+        num = self.num_boxes(self.net)
+        alphabet = self.load_alphabet()
+        names = self.meta.names
+
+        self.network_visual_detect(self.net, im, thresh, hier_thresh, nms,
+                                   boxes, probs, names, alphabet, outfile)
+
+        res = []
+        for j in range(num):
+            for i in range(self.meta.classes):
+                if probs[j][i] > 0:
+                    res.append((self.meta.names[i], probs[j][i],
+                                (boxes[j].x, boxes[j].y, boxes[j].w,
+                                 boxes[j].h)))
+        res = sorted(res, key=lambda x: -x[1])
+        self.free_image(im)
+        self.free_ptrs(cast(probs, POINTER(c_void_p)), num)
+        return res
+
+
 if __name__ == "__main__":
-    #net = load_net("cfg/densenet201.cfg", "/home/pjreddie/trained/densenet201.weights", 0)
-    #im = load_image("data/wolf.jpg", 0, 0)
-    #meta = load_meta("cfg/imagenet1k.data")
-    #r = classify(net, meta, im)
-    #print r[:10]
-    net = load_net("cfg/tiny-yolo.cfg", "tiny-yolo.weights", 0)
-    meta = load_meta("cfg/coco.data")
-    r = detect(net, meta, "data/dog.jpg")
-    print r
-    
+    cfg = os.path.join(THIS_DIR, "..", "cfg", "yolo.cfg")
+    meta = os.path.join(THIS_DIR, "..", "cfg", "coco.data")
+    weights = os.path.join(THIS_DIR, "..", "yolo.weights")
+    img = os.path.join(THIS_DIR, "..", "data", "dog.jpg")
 
+    yolo = Darknet(cfg, meta, weights)
+    # res = yolo.detect(img, outfile="yolo_det")
+    res = yolo.detect_v(img, outfile="yolo_det")
+    print(res)
