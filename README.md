@@ -40,4 +40,6 @@ The trash bin is recognized as a person! Moreover, for small objects or some obj
 
 Replacing Darknet with Darknet-vis is effortless, you just need to add `visualization=1` in __net__ entry of the cfg file. For example, my config in [yolo.cfg](cfg/yolo.cfg)
 
-More handy Python API will be available soon.
+#### Python API
+
+I wirte a more handy Darknet API wrapper. You can find the example at [darknet.py](https://github.com/xueeinstein/darknet-vis/blob/master/python/darknet.py). Note that `Darknet.detect_v()` is for this customized visualization.
